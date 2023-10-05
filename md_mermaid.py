@@ -33,6 +33,8 @@ class MermaidPreprocessor(Preprocessor):
         m_end = None
         in_mermaid_code = False
         is_mermaid = False
+        count_starts = 0
+        count_ends = 0
         for line in lines:
             # Wait for starting line with MermaidRegex (~~~ or ``` following by [mM]ermaid )
             if not in_mermaid_code:
@@ -43,6 +45,10 @@ class MermaidPreprocessor(Preprocessor):
                     in_mermaid_code = False
 
             if m_start:
+                if count_ends < count_starts:
+                    new_lines.extend(['</div>', ''])
+                    count_ends += 1
+
                 in_mermaid_code = True
                 mermaid_sign = m_start.group("mermaid_sign")
                 if not re.match(r"^[\ \t]*$", old_line):
@@ -52,16 +58,21 @@ class MermaidPreprocessor(Preprocessor):
                     #new_lines.append('<style type="text/css"> @import url("https://cdn.rawgit.com/knsv/mermaid/0.5.8/dist/mermaid.css"); </style>')
                 new_lines.append('<div class="mermaid">')
                 m_start = None
+                count_starts += 1
             elif m_end:
                 new_lines.append('</div>')
                 new_lines.append("")
                 m_end = None
+                count_ends += 1
             elif in_mermaid_code:
                 new_lines.append(strip_notprintable(line).strip())
             else:
                 new_lines.append(line)
 
             old_line = line
+
+        if count_ends < count_starts:
+            new_lines.extend(['</div>', ''])
 
         if is_mermaid:
             new_lines.append('')
